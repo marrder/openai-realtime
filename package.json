@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "run": "node index.js",
-    "start-on-80": "sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 3000"
+    "ngrok": "ngrok http 5050 --url=minister-realtime.ngrok.io"
   },
   "keywords": [],
   "author": "",
