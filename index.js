@@ -23,8 +23,7 @@ fastify.register(fastifyWs);
 // Constants
 // const SYSTEM_MESSAGE ="You are a helpful and bubbly AI assistant who loves to chat about anything the user is interested about and is prepared to offer them facts. You have a penchant for dad jokes, owl jokes, and rickrolling – subtly. Always stay positive, but work in a joke when appropriate.";
 
-const SYSTEM_MESSAGE = `
-Minister Hotel Root Prompt
+const SYSTEM_MESSAGE = `Minister Hotel Root Prompt
 
 Capabilities
 - You can set a wakeup call. Prompt the user for the time he or she would like to be woken up
@@ -64,18 +63,42 @@ Capabilities
 - You can offer guests room upgrades. The presidential suite is available for a cost of $350 per night and includes a conference table.
 - Small business rooms are available so guests can work in a personal space
 
+Reservations:
+- You can take reservations. You will need te guest’s first and last name, check in date, length of stay, type of room: 
+- $82+ imps =$ 97.58 Equivalente a 2,439.5 LPS para una persona habitación sencilla
+- $89+ imps =$ 105.91 Equivalente a 2,647.75 LPS para dos personas habitación doble
+- $110+ imps =$ 130.9 Equivalente a 3,272.5 LPS para tres personas habitación triple 
+- $120+ imps = $ 142.980 Equivalente a 3,570.5 LPS para 2 personas habitación JR Suite
+- $120+ imps = $142.980 Equivalente a 3,570.5 LPS para 2 personas habitación Kingsize 
+
 
 
 Personality
 - You are the friendly concierge at the Minister Hotel 
 - You are interacting with guests through the phone system
-- Respond in Latin American Spanish unless the guest speaks another language
+- Respond in Spanish unless the guest speaks another language
 - Your name is “zero”
 - You are the digital equivalent of Cesar Ritz and you can make anything happen to enhance the guest’s experience. You have agency to direct employees, management, consultants, stores, services to solve problems and enhance guest stay
-
 `;
 const VOICE = "alloy";
 const PORT = process.env.PORT || 5050; // Allow dynamic port assignment
+
+const tools = [
+  {
+    type: "function",
+    name: "send_message",
+    description:
+      "Send a message with the outcome of the transaction. This message will notify a human to perform actions",
+    parameters: {
+      type: "object",
+      properties: {
+        message: { type: "string", description: "The message to the human" },
+        context: { type: "string", description: "The context of the request" },
+      },
+      required: ["location"],
+    },
+  },
+];
 
 // List of Event Types to log to the console. See the OpenAI Realtime API Documentation: https://platform.openai.com/docs/api-reference/realtime
 const LOG_EVENT_TYPES = [
@@ -145,6 +168,8 @@ fastify.register(async (fastify) => {
           instructions: SYSTEM_MESSAGE,
           modalities: ["text", "audio"],
           temperature: 0.8,
+          tool_choice: "auto",
+          tools: tools,
         },
       };
 
@@ -165,7 +190,7 @@ fastify.register(async (fastify) => {
           content: [
             {
               type: "input_text",
-              text: 'Greet the user with "Hello there! I am an AI voice assistant powered by Twilio and the OpenAI Realtime API. You can ask me for facts, jokes, or anything you can imagine. How can I help you?"',
+              text: 'Greet the user with "Thank you for calling Minister Hotel. How can I help you today?"',
             },
           ],
         },
@@ -270,6 +295,15 @@ fastify.register(async (fastify) => {
           }
 
           sendMark(connection, streamSid);
+        } else if (
+          response.type === "function_call_output" &&
+          response.function_call
+        ) {
+          const { name, output } = response.function_call;
+          if (name === "send_message") {
+            console.log("Function Call - send_message:", output);
+            handleSendMessageFunction(output);
+          }
         }
 
         if (response.type === "input_audio_buffer.speech_started") {
